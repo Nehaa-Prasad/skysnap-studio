@@ -1,24 +1,104 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname, useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
+import Image from "next/image"
+
 export default function Navbar() {
+  const pathname = usePathname()
+  const router = useRouter()
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  // Check login whenever route changes
+  useEffect(() => {
+    const checkAuth = () => {
+      const token = localStorage.getItem("token")
+      setIsLoggedIn(!!token)
+    }
+
+    checkAuth()
+
+    // Listen for storage changes
+    window.addEventListener("storage", checkAuth)
+
+    return () => {
+      window.removeEventListener("storage", checkAuth)
+    }
+  }, [pathname])
+
+  const handleLogout = () => {
+    localStorage.removeItem("token")
+    setIsLoggedIn(false)
+    router.push("/")
+  }
+
+  const linkStyle = (path: string) =>
+    `relative text-sm tracking-widest transition duration-300 ${
+      pathname === path
+        ? "text-white"
+        : "text-gray-400 hover:text-white"
+    }`
+
   return (
-    <nav className="w-full flex items-center justify-between px-8 py-4 bg-black text-white">
-      
-      {/* Logo */}
-      <div className="text-xl font-semibold tracking-wide">
-        SkySnap Studio
-      </div>
+    <nav className="fixed top-0 w-full z-50 bg-black/80 backdrop-blur-lg border-b border-white/10">
+      <div className="max-w-7xl mx-auto px-10 py-6 flex justify-between items-center">
 
-      {/* Navigation Links */}
-      <div className="hidden md:flex gap-8 text-sm">
-        <a href="#" className="hover:text-gray-400 transition">Drones</a>
-        <a href="#" className="hover:text-gray-400 transition">Pricing</a>
-        <a href="#" className="hover:text-gray-400 transition">About</a>
-        <a href="#" className="hover:text-gray-400 transition">Contact</a>
-      </div>
+        {/* Logo */}
+        <Link href="/" className="flex items-center gap-3">
+          <Image
+            src="/drone_web_logo.png"
+            alt="SkySnap Studio Logo"
+            width={60}
+            height={60}
+            className="h-16 w-auto opacity-90 hover:opacity-100 transition duration-300"
+          />
+          <span className="text-lg tracking-[0.35em] font-semibold text-white">
+            SKYSNAP STUDIO
+          </span>
+        </Link>
 
-      {/* CTA Button */}
-      <button className="bg-teal-500 hover:bg-teal-600 px-5 py-2 rounded-full text-sm font-medium transition">
-        Rent a Drone
-      </button>
+        {/* Links */}
+        <div className="flex items-center gap-12">
+
+          <Link href="/about" className={linkStyle("/about")}>
+            ABOUT
+          </Link>
+
+          <Link href="/policies" className={linkStyle("/policies")}>
+            POLICIES
+          </Link>
+
+          {!isLoggedIn ? (
+            <>
+              <Link href="/login" className={linkStyle("/login")}>
+                LOGIN
+              </Link>
+
+              <Link
+                href="/signup"
+                className="px-6 py-2 border border-white/20 rounded-full text-white text-sm tracking-widest hover:bg-white hover:text-black transition duration-300"
+              >
+                SIGN UP
+              </Link>
+            </>
+          ) : (
+            <>
+              <Link href="/checkout" className={linkStyle("/checkout")}>
+                CHECKOUT
+              </Link>
+
+              <button
+                onClick={handleLogout}
+                className="px-6 py-2 border border-red-500/40 rounded-full text-red-400 text-sm tracking-widest hover:bg-red-500 hover:text-white transition duration-300"
+              >
+                LOGOUT
+              </button>
+            </>
+          )}
+
+        </div>
+      </div>
     </nav>
   )
 }

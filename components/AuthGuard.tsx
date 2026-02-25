@@ -3,20 +3,19 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 
-export default function CheckoutPage() {
+export default function AuthGuard({
+  children,
+}: {
+  children: React.ReactNode
+}) {
   const router = useRouter()
 
   useEffect(() => {
     const token = localStorage.getItem("token")
-
     if (!token) {
       router.push("/login")
     }
   }, [])
 
-  return (
-    <div className="pt-32">
-      <h1>Checkout Page</h1>
-    </div>
-  )
+  return <>{children}</>
 }

@@ -2,7 +2,7 @@ import Link from "next/link"
 
 export default function HomePage() {
   return (
-    <div className="min-h-screen pt-32 flex items-center justify-center relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden">
 
       {/* Background Gradient Glow */}
       <div className="absolute inset-0 bg-gradient-to-br from-black via-black to-black" />
