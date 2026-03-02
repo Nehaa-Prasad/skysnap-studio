@@ -10,10 +10,12 @@
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "date-fns": "^4.1.0",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.2.2",
     "next": "16.1.6",
     "react": "19.2.3",
+    "react-datepicker": "^9.1.0",
     "react-dom": "19.2.3",
     "zustand": "^5.0.11"
   },
