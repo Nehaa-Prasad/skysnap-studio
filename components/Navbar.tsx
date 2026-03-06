@@ -9,23 +9,36 @@ export default function Navbar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
-  // Check login whenever route changes
-  useEffect(() => {
-    const checkAuth = () => {
-      const token = localStorage.getItem("token")
-      setIsLoggedIn(!!token)
+useEffect(() => {
+
+  const token = localStorage.getItem("token")
+
+  if (!token) {
+    setIsLoggedIn(false)
+    setIsAdmin(false)
+    return
+  }
+
+  try {
+
+    const payload = JSON.parse(atob(token.split(".")[1]))
+
+    setIsLoggedIn(true)
+
+    if (payload.role === "admin") {
+      setIsAdmin(true)
+    } else {
+      setIsAdmin(false)
     }
 
-    checkAuth()
+  } catch {
+    setIsLoggedIn(false)
+    setIsAdmin(false)
+  }
 
-    // Listen for storage changes
-    window.addEventListener("storage", checkAuth)
-
-    return () => {
-      window.removeEventListener("storage", checkAuth)
-    }
-  }, [pathname])
+}, [pathname])
 
   const handleLogout = () => {
     localStorage.removeItem("token")
@@ -68,6 +81,12 @@ export default function Navbar() {
           <Link href="/policies" className={linkStyle("/policies")}>
             POLICIES
           </Link>
+
+          {isAdmin && (
+            <Link href="/admin/bookings">
+              ADMIN
+            </Link>
+          )}
 
           {!isLoggedIn ? (
             <>

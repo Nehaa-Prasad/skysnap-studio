@@ -3,28 +3,41 @@ import { connectDB } from "@/lib/db"
 import Booking from "@/models/Booking"
 
 export async function POST(req: Request) {
-  await connectDB()
 
-  const body = await req.json()
+  try {
 
-  const {
-    droneId,
-    startDate,
-    endDate,
-    pickupTime,
-    dropTime,
-    totalAmount,
-  } = body
+    const body = await req.json()
 
-  const newBooking = await Booking.create({
-    droneId,
-    startDate,
-    endDate,
-    pickupTime,
-    dropTime,
-    totalAmount,
-    status: "pending",
-  })
+    const {
+      droneId,
+      startDate,
+      endDate,
+      pickupTime,
+      dropTime,
+      totalAmount
+    } = body
 
-  return NextResponse.json(newBooking)
+    await connectDB()
+
+    const booking = await Booking.create({
+      droneId,
+      startDate,
+      endDate,
+      pickupTime,
+      dropTime,
+      totalAmount,
+      status: "pending"
+    })
+
+    return NextResponse.json(booking)
+
+  } catch (error) {
+
+    console.error(error)
+
+    return NextResponse.json(
+      { error: "Booking creation failed" },
+      { status: 500 }
+    )
+  }
 }

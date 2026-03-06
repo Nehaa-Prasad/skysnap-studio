@@ -6,6 +6,7 @@ import DatePicker from "react-datepicker"
 import "react-datepicker/dist/react-datepicker.css"
 
 export default function CheckoutPage() {
+
   const router = useRouter()
   const searchParams = useSearchParams()
 
@@ -18,6 +19,8 @@ export default function CheckoutPage() {
   const [pickupTime, setPickupTime] = useState<Date | null>(null)
   const [dropTime, setDropTime] = useState<Date | null>(null)
 
+  const [blockedDates, setBlockedDates] = useState<any[]>([])
+
   // 🔐 Auth check
   useEffect(() => {
     const token = localStorage.getItem("token")
@@ -28,70 +31,100 @@ export default function CheckoutPage() {
   useEffect(() => {
     if (droneId) {
       fetch(`/api/drones/${droneId}`)
-        .then((res) => res.json())
-        .then((data) => setDrone(data))
+        .then(res => res.json())
+        .then(data => setDrone(data))
     }
   }, [droneId])
 
-  // 🔥 IMPORTANT: Sync state with URL params
+  // 📅 Fetch blocked booking dates
   useEffect(() => {
+
+  if (!droneId) return
+
+  fetch(`/api/bookings/drone/${droneId}`)
+    .then(res => res.json())
+    .then(data => {
+
+      const intervals = data.map((b: any) => ({
+        start: new Date(b.startDate),
+        end: new Date(b.endDate)
+      }))
+
+      setBlockedDates(intervals)
+
+    })
+
+}, [droneId])
+
+  // 🔁 Restore booking values when editing
+  useEffect(() => {
+
     const start = searchParams.get("start")
     const end = searchParams.get("end")
     const pickup = searchParams.get("pickup")
     const drop = searchParams.get("drop")
 
-    // Reset first
-    setStartDate(null)
-    setEndDate(null)
-    setPickupTime(null)
-    setDropTime(null)
+    setStartDate(start ? new Date(start) : null)
+    setEndDate(end ? new Date(end) : null)
+    setPickupTime(pickup ? new Date(pickup) : null)
+    setDropTime(drop ? new Date(drop) : null)
 
-    // Then apply new values
-    if (start) setStartDate(new Date(start))
-    if (end) setEndDate(new Date(end))
-    if (pickup) setPickupTime(new Date(pickup))
-    if (drop) setDropTime(new Date(drop))
-
-  }, [searchParams.toString()])   // 🔥 KEY FIX
+  }, [searchParams.toString()])
 
   if (!drone) return <div className="pt-32 text-white">Loading...</div>
 
+  // 📊 Calculate days
   const calculateDays = () => {
+
     if (!startDate || !endDate) return 0
+
     const diff = endDate.getTime() - startDate.getTime()
+
     return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0
   }
 
   const days = calculateDays()
+
   const subtotal = drone.pricePerDay * days
   const gst = subtotal * 0.18
   const total = subtotal + gst
 
+  // 🚀 Proceed to summary
   const handleProceed = () => {
+
     if (!startDate || !endDate || !pickupTime || !dropTime) {
       alert("Please complete all booking details")
       return
     }
 
     router.push(
-      `/checkout/summary?droneId=${droneId}&start=${startDate.toISOString()}&end=${endDate.toISOString()}&pickup=${pickupTime.toISOString()}&drop=${dropTime.toISOString()}&total=${total}`
-    )
+`/checkout/summary?droneId=${droneId}
+&start=${startDate.toISOString()}
+&end=${endDate.toISOString()}
+&pickup=${pickupTime.toISOString()}
+&drop=${dropTime.toISOString()}
+&total=${total}`
+)
   }
 
   return (
     <div className="min-h-screen bg-black text-white pt-32 px-10">
+
       <div className="max-w-4xl mx-auto bg-neutral-900 p-10 rounded-xl shadow-lg">
 
+        {/* Drone Info */}
         <div className="mb-8 bg-neutral-800 p-6 rounded-lg border border-gray-700">
           <p className="text-sm text-gray-400">Booking</p>
           <h2 className="text-2xl font-semibold mt-2">{drone.name}</h2>
           <p className="text-gray-400">₹{drone.pricePerDay} / day</p>
         </div>
 
-        {/* Dates */}
+        {/* 📅 Date Selection */}
         <div className="grid grid-cols-2 gap-6 mb-6">
+
           <div>
             <label className="block mb-2">Start Date</label>
+
             <DatePicker
               selected={startDate}
               onChange={(date: Date | null) => setStartDate(date)}
@@ -99,13 +132,23 @@ export default function CheckoutPage() {
               startDate={startDate}
               endDate={endDate}
               minDate={new Date()}
+              excludeDateIntervals={blockedDates}
               dateFormat="dd/MM/yyyy"
               className="w-full bg-black border border-gray-600 p-2 text-white"
+              dayClassName={(date) => {
+                const isBlocked = blockedDates.some(
+                  (interval) =>
+                    date >= interval.start && date <= interval.end
+                )
+                return isBlocked ? "blocked-date" : ""
+          }}
             />
+
           </div>
 
           <div>
             <label className="block mb-2">End Date</label>
+
             <DatePicker
               selected={endDate}
               onChange={(date: Date | null) => setEndDate(date)}
@@ -113,16 +156,28 @@ export default function CheckoutPage() {
               startDate={startDate}
               endDate={endDate}
               minDate={startDate || new Date()}
+              excludeDateIntervals={blockedDates}
               dateFormat="dd/MM/yyyy"
               className="w-full bg-black border border-gray-600 p-2 text-white"
+              dayClassName={(date) => {
+                const isBlocked = blockedDates.some(
+                  (interval) =>
+                    date >= interval.start && date <= interval.end
+            )
+            return isBlocked ? "blocked-date" : ""
+        }}
             />
+
           </div>
+
         </div>
 
-        {/* Time */}
+        {/* ⏰ Time Selection */}
         <div className="grid grid-cols-2 gap-6 mb-6">
+
           <div>
             <label className="block mb-2">Pickup Time</label>
+
             <DatePicker
               selected={pickupTime}
               onChange={(date: Date | null) => setPickupTime(date)}
@@ -132,10 +187,12 @@ export default function CheckoutPage() {
               dateFormat="h:mm aa"
               className="w-full bg-black border border-gray-600 p-2 text-white"
             />
+
           </div>
 
           <div>
             <label className="block mb-2">Drop Time</label>
+
             <DatePicker
               selected={dropTime}
               onChange={(date: Date | null) => setDropTime(date)}
@@ -145,11 +202,14 @@ export default function CheckoutPage() {
               dateFormat="h:mm aa"
               className="w-full bg-black border border-gray-600 p-2 text-white"
             />
+
           </div>
+
         </div>
 
-        {/* Pricing */}
+        {/* 💰 Pricing */}
         <div className="border-t border-gray-700 pt-6">
+
           <div className="flex justify-between mb-2">
             <span>Total Days</span>
             <span>{days}</span>
@@ -169,8 +229,10 @@ export default function CheckoutPage() {
             <span>Grand Total</span>
             <span>₹{total.toFixed(2)}</span>
           </div>
+
         </div>
 
+        {/* 🔴 Proceed Button */}
         <button
           onClick={handleProceed}
           disabled={!days || !pickupTime || !dropTime}
@@ -180,6 +242,7 @@ export default function CheckoutPage() {
         </button>
 
       </div>
+
     </div>
   )
 }

@@ -35,3 +35,9 @@ body {
   color: #f8fafc;
   font-family: Arial, Helvetica, sans-serif;
 }
+.blocked-date {
+  background-color: #ef4444 !important;
+  color: white !important;
+  border-radius: 50%;
+  cursor: not-allowed;
+}
