@@ -15,7 +15,8 @@ export async function GET(
   const bookings = await Booking.find({
     droneId: new mongoose.Types.ObjectId(droneId),
     status: "paid"
-  })
+  }).select("startDate endDate")
 
   return NextResponse.json(bookings)
+
 }

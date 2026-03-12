@@ -14,9 +14,12 @@ export default function CheckoutPage() {
 
   const [drone, setDrone] = useState<any>(null)
 
-  const [startDate, setStartDate] = useState<Date | null>(null)
-  const [endDate, setEndDate] = useState<Date | null>(null)
+  const [pickupDate, setPickupDate] = useState<Date | null>(null)
   const [pickupTime, setPickupTime] = useState<Date | null>(null)
+
+  const [days, setDays] = useState<number>(1)
+
+  const [dropDate, setDropDate] = useState<Date | null>(null)
   const [dropTime, setDropTime] = useState<Date | null>(null)
 
   const [blockedDates, setBlockedDates] = useState<any[]>([])
@@ -29,83 +32,91 @@ export default function CheckoutPage() {
 
   // 📦 Fetch drone
   useEffect(() => {
-    if (droneId) {
-      fetch(`/api/drones/${droneId}`)
-        .then(res => res.json())
-        .then(data => setDrone(data))
-    }
+
+    if (!droneId) return
+
+    fetch(`/api/drones/${droneId}`)
+      .then(res => res.json())
+      .then(data => setDrone(data))
+
   }, [droneId])
 
   // 📅 Fetch blocked booking dates
   useEffect(() => {
 
-  if (!droneId) return
+    if (!droneId) return
 
-  fetch(`/api/bookings/drone/${droneId}`)
-    .then(res => res.json())
-    .then(data => {
+    fetch(`/api/bookings/drone/${droneId}`)
+      .then(res => res.json())
+      .then(data => {
 
-      const intervals = data.map((b: any) => ({
-        start: new Date(b.startDate),
-        end: new Date(b.endDate)
-      }))
+        const intervals = data.map((b: any) => ({
+          start: new Date(b.startDate),
+          end: new Date(b.endDate)
+        }))
 
-      setBlockedDates(intervals)
+        setBlockedDates(intervals)
 
-    })
+      })
 
-}, [droneId])
+  }, [droneId])
 
-  // 🔁 Restore booking values when editing
+  // ⏱ Auto calculate drop date/time
   useEffect(() => {
 
-    const start = searchParams.get("start")
-    const end = searchParams.get("end")
-    const pickup = searchParams.get("pickup")
-    const drop = searchParams.get("drop")
+    if (!pickupDate || !pickupTime) return
 
-    setStartDate(start ? new Date(start) : null)
-    setEndDate(end ? new Date(end) : null)
-    setPickupTime(pickup ? new Date(pickup) : null)
-    setDropTime(drop ? new Date(drop) : null)
+    const start = new Date(pickupDate)
 
-  }, [searchParams.toString()])
+    start.setHours(
+      pickupTime.getHours(),
+      pickupTime.getMinutes(),
+      0,
+      0
+    )
 
-  if (!drone) return <div className="pt-32 text-white">Loading...</div>
+    const drop = new Date(start)
+    drop.setHours(drop.getHours() + days * 24)
 
-  // 📊 Calculate days
-  const calculateDays = () => {
+    setDropDate(new Date(drop))
+    setDropTime(new Date(drop))
 
-    if (!startDate || !endDate) return 0
+  }, [pickupDate, pickupTime, days])
 
-    const diff = endDate.getTime() - startDate.getTime()
 
-    return diff > 0 ? Math.ceil(diff / (1000 * 60 * 60 * 24)) : 0
-  }
-
-  const days = calculateDays()
-
-  const subtotal = drone.pricePerDay * days
+  // 💰 Pricing
+  const subtotal = drone ? drone.pricePerDay * days : 0
   const gst = subtotal * 0.18
   const total = subtotal + gst
 
-  // 🚀 Proceed to summary
+
+  // 🚀 Proceed
   const handleProceed = () => {
 
-    if (!startDate || !endDate || !pickupTime || !dropTime) {
-      alert("Please complete all booking details")
+    if (!pickupDate || !pickupTime) {
+      alert("Please select pickup date and time")
+      return
+    }
+
+    if (days < 1) {
+      alert("Minimum booking is 1 day")
       return
     }
 
     router.push(
 `/checkout/summary?droneId=${droneId}
-&start=${startDate.toISOString()}
-&end=${endDate.toISOString()}
+&start=${pickupDate.toISOString()}
 &pickup=${pickupTime.toISOString()}
-&drop=${dropTime.toISOString()}
+&days=${days}
+&drop=${dropDate?.toISOString()}
 &total=${total}`
 )
   }
+
+
+  // 🔒 Loading check
+  if (!drone) return <div className="pt-32 text-white">Loading...</div>
+
 
   return (
     <div className="min-h-screen bg-black text-white pt-32 px-10">
@@ -119,95 +130,93 @@ export default function CheckoutPage() {
           <p className="text-gray-400">₹{drone.pricePerDay} / day</p>
         </div>
 
-        {/* 📅 Date Selection */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
 
-          <div>
-            <label className="block mb-2">Start Date</label>
+        {/* PICKUP DATE */}
+        <div className="mb-6">
 
-            <DatePicker
-              selected={startDate}
-              onChange={(date: Date | null) => setStartDate(date)}
-              selectsStart
-              startDate={startDate}
-              endDate={endDate}
-              minDate={new Date()}
-              excludeDateIntervals={blockedDates}
-              dateFormat="dd/MM/yyyy"
-              className="w-full bg-black border border-gray-600 p-2 text-white"
-              dayClassName={(date) => {
-                const isBlocked = blockedDates.some(
-                  (interval) =>
-                    date >= interval.start && date <= interval.end
-                )
-                return isBlocked ? "blocked-date" : ""
-          }}
-            />
+          <label className="block mb-2">Pickup Date</label>
 
-          </div>
+          <DatePicker
+            selected={pickupDate}
+            onChange={(date: Date | null) => setPickupDate(date)}
+            minDate={new Date()}
+            excludeDateIntervals={blockedDates}
+            dateFormat="dd/MM/yyyy"
+            placeholderText="Select pickup date"
+            className="w-full bg-black border border-gray-600 p-2 text-white"
+          />
 
-          <div>
-            <label className="block mb-2">End Date</label>
+          {/* Calendar legend */}
+          <p className="text-xs text-gray-400 mt-2">
+            Dates already booked are <span className="text-red-400">disabled</span>.
+          </p>
 
-            <DatePicker
-              selected={endDate}
-              onChange={(date: Date | null) => setEndDate(date)}
-              selectsEnd
-              startDate={startDate}
-              endDate={endDate}
-              minDate={startDate || new Date()}
-              excludeDateIntervals={blockedDates}
-              dateFormat="dd/MM/yyyy"
-              className="w-full bg-black border border-gray-600 p-2 text-white"
-              dayClassName={(date) => {
-                const isBlocked = blockedDates.some(
-                  (interval) =>
-                    date >= interval.start && date <= interval.end
-            )
-            return isBlocked ? "blocked-date" : ""
-        }}
-            />
+        </div>
+
+
+        {/* PICKUP TIME */}
+        <div className="mb-6">
+
+          <label className="block mb-2">Pickup Time</label>
+
+          <DatePicker
+            selected={pickupTime}
+            onChange={(date: Date | null) => setPickupTime(date)}
+            showTimeSelect
+            showTimeSelectOnly
+            timeIntervals={5}
+            minTime={new Date(0, 0, 0, 8, 0)}
+            maxTime={new Date(0, 0, 0, 20, 0)}
+            dateFormat="h:mm aa"
+            className="w-full bg-black border border-gray-600 p-2 text-white"
+          />
+
+          <p className="text-sm text-gray-400 mt-2">
+            Pickup allowed between <b>8:00 AM and 8:00 PM</b>.
+          </p>
+
+        </div>
+
+
+        {/* NUMBER OF DAYS */}
+        <div className="mb-6">
+
+          <label className="block mb-2">Number of Days</label>
+
+          <input
+            type="number"
+            min={1}
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            className="w-full bg-black border border-gray-600 p-2 text-white"
+          />
+
+        </div>
+
+
+        {/* AUTO DROP TIME */}
+        <div className="mb-6">
+
+          <label className="block mb-2">Drop Time (Auto Calculated)</label>
+
+          <div className="bg-black border border-gray-600 p-3 text-gray-300">
+
+            {dropDate
+              ? `${dropDate.toLocaleDateString()} — ${dropDate.toLocaleTimeString([], {hour: "2-digit", minute: "2-digit"})}`
+              : "Select pickup date and time"}
 
           </div>
 
         </div>
 
-        {/* ⏰ Time Selection */}
-        <div className="grid grid-cols-2 gap-6 mb-6">
 
-          <div>
-            <label className="block mb-2">Pickup Time</label>
+        {/* RULE */}
+        <p className="text-sm text-gray-400 mb-6">
+          Minimum booking is <b>24 hours</b>. Returning even a few minutes late will count as an extra day.
+        </p>
 
-            <DatePicker
-              selected={pickupTime}
-              onChange={(date: Date | null) => setPickupTime(date)}
-              showTimeSelect
-              showTimeSelectOnly
-              timeIntervals={5}
-              dateFormat="h:mm aa"
-              className="w-full bg-black border border-gray-600 p-2 text-white"
-            />
 
-          </div>
-
-          <div>
-            <label className="block mb-2">Drop Time</label>
-
-            <DatePicker
-              selected={dropTime}
-              onChange={(date: Date | null) => setDropTime(date)}
-              showTimeSelect
-              showTimeSelectOnly
-              timeIntervals={5}
-              dateFormat="h:mm aa"
-              className="w-full bg-black border border-gray-600 p-2 text-white"
-            />
-
-          </div>
-
-        </div>
-
-        {/* 💰 Pricing */}
+        {/* PRICE */}
         <div className="border-t border-gray-700 pt-6">
 
           <div className="flex justify-between mb-2">
@@ -232,10 +241,11 @@ export default function CheckoutPage() {
 
         </div>
 
-        {/* 🔴 Proceed Button */}
+
+        {/* BUTTON */}
         <button
           onClick={handleProceed}
-          disabled={!days || !pickupTime || !dropTime}
+          disabled={!pickupDate || !pickupTime}
           className="w-full mt-8 bg-red-600 hover:bg-red-700 disabled:bg-gray-700 transition py-3 rounded-lg text-lg font-semibold"
         >
           Review Booking

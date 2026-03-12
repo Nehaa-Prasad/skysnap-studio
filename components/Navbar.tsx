@@ -107,6 +107,10 @@ useEffect(() => {
                 CHECKOUT
               </Link>
 
+              <Link href="/bookings" className={linkStyle("/bookings")}>
+                MY BOOKINGS
+              </Link>
+
               <button
                 onClick={handleLogout}
                 className="px-6 py-2 border border-red-500/40 rounded-full text-red-400 text-sm tracking-widest hover:bg-red-500 hover:text-white transition duration-300"

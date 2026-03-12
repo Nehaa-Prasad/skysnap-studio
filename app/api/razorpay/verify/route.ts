@@ -22,15 +22,19 @@ export async function POST(req: Request) {
     .digest("hex")
 
   if (generated_signature !== razorpay_signature) {
-    return NextResponse.json({ success: false })
+    return NextResponse.json({ success: false, message: "Payment verification failed" })
   }
 
   await connectDB()
 
   await Booking.findByIdAndUpdate(bookingId, {
     status: "paid",
-    paymentId: razorpay_payment_id
+    paymentId: razorpay_payment_id,
+    orderId: razorpay_order_id
   })
 
-  return NextResponse.json({ success: true })
+  return NextResponse.json({
+    success: true,
+    message: "Payment verified successfully"
+  })
 }
